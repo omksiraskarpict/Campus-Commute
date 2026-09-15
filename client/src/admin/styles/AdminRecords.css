@@ -1,0 +1,423 @@
+.admin-tool-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fafafd;
+}
+
+.admin-record b {
+  display: block;
+  color: var(--deep);
+  font-size: 14px;
+}
+
+.admin-record small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.admin-record select {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.admin-record-button {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-record-button > span:first-child {
+  min-width: 0;
+}
+
+.admin-record-button b {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-wrap: anywhere;
+}
+
+.admin-record-button b em,
+.modal-summary em {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.admin-record-button:hover {
+  border-color: #c7c3e8;
+  background: #f5f4fc;
+}
+
+.ride-admin-record {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.ride-admin-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ride-admin-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.ride-admin-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background: #edf7f3;
+  color: #1f7d66;
+}
+
+.status-badge.completed {
+  background: #f0ebff;
+  color: #5a3ac8;
+}
+
+.status-badge.cancelled {
+  background: #fff0ee;
+  color: #c45343;
+}
+
+.ride-complete-button {
+  white-space: nowrap;
+}
+
+.ride-completion-summary {
+  display: grid;
+  gap: 18px;
+}
+
+.ride-completion-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.ride-completion-grid > div {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fafafd;
+}
+
+.ride-completion-grid small {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.ride-completion-grid b {
+  color: var(--deep);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.ride-completion-question {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.admin-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(26 24 47 / 45%);
+}
+
+.admin-modal {
+  display: flex;
+  width: min(620px, 100%);
+  max-height: min(760px, calc(100vh - 40px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgb(25 20 70 / 22%);
+}
+
+.wide-admin-modal {
+  width: min(800px, 100%);
+}
+
+.admin-modal-header,
+.admin-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+}
+
+.admin-modal-header {
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-modal-header h2 {
+  margin: 3px 0 0;
+  color: var(--deep);
+  font-size: 21px;
+}
+
+.admin-modal-close {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--muted);
+}
+
+.admin-modal-close:hover {
+  background: #f1f0f8;
+  color: var(--deep);
+}
+
+.admin-modal-body {
+  overflow-y: auto;
+  padding: 22px;
+}
+
+.admin-modal-footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--line);
+}
+
+.modal-summary {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ride-detail {
+  padding: 17px 0;
+  border-top: 1px solid var(--line);
+}
+
+.ride-detail h3 {
+  margin: 0 0 14px;
+  color: var(--deep);
+  font-size: 14px;
+}
+
+.ride-detail-meta,
+.conversation-context,
+.notification-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.ride-detail-meta span,
+.conversation-context span,
+.notification-detail-grid > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.ride-detail-meta small,
+.conversation-context small,
+.notification-detail-grid small,
+.notification-message small {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.ride-detail-meta b,
+.conversation-context b,
+.notification-detail-grid b {
+  overflow-wrap: anywhere;
+  color: var(--deep);
+  font-size: 12px;
+}
+
+.passenger-list {
+  margin-top: 17px;
+}
+
+.passenger-list h4 {
+  margin: 0 0 9px;
+  color: var(--deep);
+  font-size: 12px;
+}
+
+.passenger-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid #f0eff5;
+}
+
+.passenger-row span:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.passenger-row small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.conversation-context {
+  margin-bottom: 18px;
+  padding: 14px;
+  border-radius: 11px;
+  background: #fafafd;
+}
+
+.conversation-list {
+  display: grid;
+  gap: 10px;
+}
+
+.message-entry {
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fafafd;
+}
+
+.message-entry > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.message-entry small {
+  color: var(--muted);
+  font-size: 10px;
+  text-align: right;
+}
+
+.message-entry p,
+.notification-message p {
+  margin: 10px 0 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.notification-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.notification-message {
+  margin-top: 18px;
+  padding-top: 17px;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 640px) {
+  .admin-modal-backdrop {
+    padding: 10px;
+  }
+
+  .admin-modal {
+    max-height: calc(100vh - 20px);
+  }
+
+  .admin-modal-header,
+  .admin-modal-body,
+  .admin-modal-footer {
+    padding: 16px;
+  }
+
+  .ride-detail-meta,
+  .conversation-context,
+  .notification-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .message-entry > div,
+  .passenger-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .message-entry small {
+    text-align: left;
+  }
+}
+
+/* Fix Overview back button orientation */
+.admin-back {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+  direction: ltr !important;
+  writing-mode: horizontal-tb !important;
+  transform: none !important;
+  text-decoration: none !important;
+}
+
+.admin-back svg {
+  display: block !important;
+  flex-shrink: 0 !important;
+  transform: none !important;
+}
+
+.admin-back * {
+  transform: none !important;
+}
