@@ -17,30 +17,73 @@ import { env } from './config/env.js';
 export function createApp() {
   const app = express();
 
-  // Trust proxy when deployed behind services such as Render, Railway, etc.
+  // Trust proxy when deployed behind services such as Render
   app.set('trust proxy', 1);
 
+  // --------------------------------------------------
   // Security
+  // --------------------------------------------------
   app.use(helmet());
 
+  // --------------------------------------------------
   // CORS
+  // --------------------------------------------------
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://campus-commute.vercel.app',
+    ...(Array.isArray(env.clientUrls) ? env.clientUrls : [])
+  ];
+
+  // Remove duplicate origins
+  const uniqueOrigins = [...new Set(allowedOrigins)];
+
   app.use(
     cors({
       origin: (origin, callback) => {
-        if (!origin || env.clientUrls.includes(origin)) {
+        // Allow requests that don't contain an Origin header
+        // (Postman, server-to-server requests, etc.)
+        if (!origin) {
           return callback(null, true);
         }
 
-        return callback(new Error(`CORS origin not allowed: ${origin}`));
+        if (uniqueOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+
+        console.error(`CORS blocked origin: ${origin}`);
+
+        return callback(
+          new Error(`CORS origin not allowed: ${origin}`)
+        );
       },
-      credentials: true
+
+      credentials: true,
+
+      methods: [
+        'GET',
+        'POST',
+        'PUT',
+        'PATCH',
+        'DELETE',
+        'OPTIONS'
+      ],
+
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization'
+      ]
     })
   );
 
+  // --------------------------------------------------
   // Body parser
+  // --------------------------------------------------
   app.use(express.json({ limit: '1mb' }));
 
+  // --------------------------------------------------
   // Rate limiting
+  // --------------------------------------------------
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
@@ -50,18 +93,24 @@ export function createApp() {
     })
   );
 
+  // --------------------------------------------------
   // Health check
+  // --------------------------------------------------
   app.get('/api/health', (_req, res) => {
     const databaseReady = mongoose.connection.readyState === 1;
 
     res.status(databaseReady ? 200 : 503).json({
       ok: databaseReady,
       service: 'campus-commute-api',
-      database: databaseReady ? 'connected' : 'unavailable'
+      database: databaseReady
+        ? 'connected'
+        : 'unavailable'
     });
   });
 
-  // API routes
+  // --------------------------------------------------
+  // API Routes
+  // --------------------------------------------------
   app.use('/api/auth', authRoutes);
   app.use('/api/rides', rideRoutes);
   app.use('/api/notifications', notificationRoutes);
@@ -70,18 +119,19 @@ export function createApp() {
   app.use('/api/chatbot', chatbotRoutes);
   app.use('/api/admin', adminRoutes);
 
-  // 404 handler
+  // --------------------------------------------------
+  // 404 Handler
+  // --------------------------------------------------
   app.use((req, res) => {
     res.status(404).json({
       message: `Route not found: ${req.method} ${req.originalUrl}`
     });
   });
 
-  // Global error handler
+  // --------------------------------------------------
+  // Global Error Handler
+  // --------------------------------------------------
   app.use((error, req, res, _next) => {
-    // IMPORTANT:
-    // Print the complete backend error so development errors
-    // are visible in the terminal.
     console.error('\n========== SERVER ERROR ==========');
     console.error('Method:', req.method);
     console.error('URL:', req.originalUrl);
@@ -94,7 +144,18 @@ export function createApp() {
 
     console.error('==================================\n');
 
-    const databaseReady = mongoose.connection.readyState === 1;
+    const databaseReady =
+      mongoose.connection.readyState === 1;
+
+    // CORS error
+    if (
+      error?.message &&
+      error.message.startsWith('CORS origin not allowed:')
+    ) {
+      return res.status(403).json({
+        message: 'CORS origin not allowed.'
+      });
+    }
 
     // Zod validation error
     if (error?.name === 'ZodError') {
@@ -110,10 +171,12 @@ export function createApp() {
         message: error.message,
         errors: error.errors
           ? Object.fromEntries(
-              Object.entries(error.errors).map(([field, value]) => [
-                field,
-                value.message
-              ])
+              Object.entries(error.errors).map(
+                ([field, value]) => [
+                  field,
+                  value.message
+                ]
+              )
             )
           : undefined
       });
@@ -127,7 +190,7 @@ export function createApp() {
       });
     }
 
-    // JWT/authentication errors
+    // JWT / authentication errors
     if (
       error?.name === 'JsonWebTokenError' ||
       error?.name === 'TokenExpiredError'
