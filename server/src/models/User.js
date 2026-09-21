@@ -3,9 +3,11 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
-  password: { type: String, required: true, select: false },
+  password: { type: String, default: null, select: false },
   phone: String,
   role: { type: String, enum: ['STUDENT', 'ADMIN'], default: 'STUDENT', index: true },
+  authProvider: { type: String, enum: ['LOCAL', 'GOOGLE', 'MICROSOFT'], default: 'LOCAL', index: true },
+  providerId: { type: String, default: null, index: true },
   college: String,
   department: String,
   year: String,
@@ -24,5 +26,6 @@ const userSchema = new mongoose.Schema({
   responseRate: { type: Number, default: 100, min: 0, max: 100 }
 }, { timestamps: true });
 
+userSchema.index({ authProvider: 1, providerId: 1 }, { unique: true, sparse: true });
 userSchema.set('toJSON', { transform: (_doc, value) => { delete value.password; return value; } });
 export default mongoose.model('User', userSchema);
