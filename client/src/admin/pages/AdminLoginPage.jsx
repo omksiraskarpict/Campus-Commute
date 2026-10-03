@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import '../styles/index.css';
 
@@ -7,6 +7,7 @@ export function AdminLoginPage({ request, user, onLogin }) {
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   if (user && user.role === 'ADMIN') {
     return <Navigate to="/admin/dashboard" replace />;
@@ -24,14 +25,14 @@ export function AdminLoginPage({ request, user, onLogin }) {
       });
 
       if (data.user?.role !== 'ADMIN') {
-        setError('This account is not authorized for the Campus Commute admin panel.');
+        setError('This account is not authorized for the Campus Commute admin panel');
         return;
       }
 
       localStorage.setItem('campus-token', data.token);
       onLogin(data.user);
     } catch (err) {
-      setError(err.message || 'Unable to sign in to the admin panel.');
+      setError(err.message || 'Unable to sign in to the admin panel');
     } finally {
       setBusy(false);
     }
@@ -48,8 +49,10 @@ export function AdminLoginPage({ request, user, onLogin }) {
 
           <div className="auth-message">
             <p className="eyebrow">SECURE ADMIN ACCESS</p>
-            <h1>Platform <em>oversight.</em></h1>
-            <p>Review student activity, rides, reports, and community health from a dedicated admin workspace.</p>
+            <h1>Platform <em>oversight</em></h1>
+            <p>
+              Review student activity, rides, reports, and community health from a dedicated admin workspace
+            </p>
           </div>
         </div>
 
@@ -57,8 +60,8 @@ export function AdminLoginPage({ request, user, onLogin }) {
           <div className="admin-login-card">
             <div className="admin-login-title">
               <p className="eyebrow">ADMIN LOGIN</p>
-              <h2>Authorize access.</h2>
-              <p>Use the platform administrator account to continue.</p>
+              <h2>Authorize access</h2>
+              <p>Use the platform administrator account to continue</p>
             </div>
 
             <form className="admin-login-form" onSubmit={submit}>
@@ -67,7 +70,9 @@ export function AdminLoginPage({ request, user, onLogin }) {
                 <input
                   type="email"
                   value={form.email}
-                  onChange={(event) => setForm({ ...form, email: event.target.value })}
+                  onChange={(event) =>
+                    setForm({ ...form, email: event.target.value })
+                  }
                   placeholder="admin@college.edu"
                   required
                 />
@@ -75,18 +80,46 @@ export function AdminLoginPage({ request, user, onLogin }) {
 
               <label>
                 Password
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={(event) => setForm({ ...form, password: event.target.value })}
-                  placeholder="Enter password"
-                  required
-                />
+
+                <div className="password-input-wrapper">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={(event) =>
+                      setForm({ ...form, password: event.target.value })
+                    }
+                    placeholder="Enter password"
+                    required
+                  />
+
+                  <button
+                    type="button"
+                    className="password-eye-button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={
+                      showPassword ? 'Hide password' : 'Show password'
+                    }
+                  >
+                    {showPassword ? (
+                      <Eye size={18} />
+                    ) : (
+                      <EyeOff size={18} />
+                    )}
+                  </button>
+                </div>
               </label>
 
-              {error && <div className="admin-login-error">{error}</div>}
+              {error && (
+                <div className="admin-login-error">
+                  {error}
+                </div>
+              )}
 
-              <button className="admin-login-button" type="submit" disabled={busy}>
+              <button
+                className="admin-login-button"
+                type="submit"
+                disabled={busy}
+              >
                 <ShieldCheck size={16} />
                 {busy ? 'Signing in...' : 'Access admin panel'}
               </button>
