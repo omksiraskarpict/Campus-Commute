@@ -136,10 +136,6 @@ const GOOGLE_SCRIPT_ID =
   'google-gsi-script';
 
 
-const googleInitializedClients =
-  new Set();
-
-
 const googleScriptPromise =
   new Map();
 
@@ -831,6 +827,8 @@ function Auth({ mode, onMode, onLogin }) {
 
   const googleProcessingRef = useRef(false);
 
+  const googleButtonRef = useRef(null);
+
 
   const finalizeLogin = (data) => {
 
@@ -921,11 +919,9 @@ function Auth({ mode, onMode, onLogin }) {
         if (cancelled) return;
 
         if (!window.google?.accounts?.id) {
-          throw new Error('Google Sign-In could not be initialized.');
-        }
-
-        if (googleInitializedClients.has(googleClientId)) {
-          return;
+          throw new Error(
+            'Google Sign-In could not be initialized.'
+          );
         }
 
         window.google.accounts.id.initialize({
@@ -935,7 +931,9 @@ function Auth({ mode, onMode, onLogin }) {
           callback: async (response) => {
 
             if (!response?.credential) {
-              setError('Google did not return a valid identity credential.');
+              setError(
+                'Google did not return a valid identity credential.'
+              );
               return;
             }
 
@@ -959,25 +957,56 @@ function Auth({ mode, onMode, onLogin }) {
               );
 
             } finally {
+
               googleProcessingRef.current = false;
+
             }
 
           },
 
           auto_select: false,
-          cancel_on_tap_outside: true
+          cancel_on_tap_outside: true,
+          use_fedcm_for_prompt: false
 
         });
 
-        googleInitializedClients.add(googleClientId);
+        if (
+          mode === 'login' &&
+          googleButtonRef.current
+        ) {
+
+          googleButtonRef.current.innerHTML = '';
+
+          window.google.accounts.id.renderButton(
+            googleButtonRef.current,
+            {
+              type: 'standard',
+              theme: 'outline',
+              size: 'large',
+              text: 'continue_with',
+              shape: 'rectangular',
+              width: 400,
+              logo_alignment: 'left',
+              use_fedcm_for_button: false
+            }
+          );
+
+        }
 
       } catch (e) {
 
         if (!cancelled) {
-          console.error('[Google Sign-In]', e);
-          setError(
-            e.message || 'Google sign-in could not be initialized.'
+
+          console.error(
+            '[Google Sign-In]',
+            e
           );
+
+          setError(
+            e.message ||
+            'Google sign-in could not be initialized.'
+          );
+
         }
 
       }
@@ -990,7 +1019,7 @@ function Auth({ mode, onMode, onLogin }) {
       cancelled = true;
     };
 
-  }, [googleClientId]);
+  }, [googleClientId, mode]);
 
 
   useEffect(() => {
@@ -1067,30 +1096,6 @@ function Auth({ mode, onMode, onLogin }) {
   };
 
 
-  const handleGoogleClick = () => {
-
-    if (!googleClientId) {
-      setError('Google sign-in is not configured yet.');
-      return;
-    }
-
-    if (!window.google?.accounts?.id) {
-      setError('Google Sign-In is still loading. Please try again.');
-      return;
-    }
-
-    if (socialBusy.google) return;
-
-    setError('');
-
-    try {
-      window.google.accounts.id.prompt();
-    } catch (e) {
-      console.error('[Google Sign-In]', e);
-      setError(e.message || 'Google sign-in could not be started.');
-    }
-
-  };
 
 
   const handleMicrosoftClick = async () => {
@@ -1319,27 +1324,10 @@ function Auth({ mode, onMode, onLogin }) {
             </div>
 
 
-            <button
-              type="button"
-              className="social-button"
-              onClick={handleGoogleClick}
-              disabled={socialBusy.google || !googleClientId}
-            >
-              <span
-                className="social-provider-icon google-icon"
-                aria-hidden="true"
-              >
-                G
-              </span>
-
-              <span>
-                {
-                  socialBusy.google
-                    ? 'Connecting Google...'
-                    : 'Continue with Google'
-                }
-              </span>
-            </button>
+            <div
+              ref={googleButtonRef}
+              className="google-signin-container"
+            />
 
 
             <button

@@ -6226,3 +6226,34 @@ button,a,input,textarea,select,.nav-item,.ride-card,.stat-card,.request-card,
     animation: none !important;
   }
 }
+/* Google Identity Services rendered button */
+.google-signin-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  overflow: hidden;
+}
+
+.google-signin-container > div {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 400px;
+}
+
+.google-signin-container iframe {
+  max-width: 100%;
+}
+
+@media (max-width: 430px) {
+  .google-signin-container {
+    justify-content: stretch;
+  }
+
+  .google-signin-container > div {
+    width: 100%;
+    max-width: 100%;
+  }
+}
