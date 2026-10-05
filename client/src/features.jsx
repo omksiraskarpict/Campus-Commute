@@ -339,272 +339,354 @@ function MessagesView({
   ].filter(
     (ride, index, list) =>
       list.findIndex(
-        (item) =>
-          item._id === ride._id
+        (item) => item._id === ride._id
       ) === index
   );
 
-  const [active, setActive] =
-    useState(
-      conversations[0] || null
+  const [active, setActive] = useState(
+    conversations[0] || null
+  );
+  const [messages, setMessages] = useState([]);
+  const [text, setText] = useState('');
+
+  const messagesRef = useRef(null);
+  const shouldStickToBottomRef = useRef(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+
+  const scrollToLatest = useCallback((smooth = true) => {
+    const container = messagesRef.current;
+    if (!container) return;
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  }, []);
+
+  const handleMessagesScroll = useCallback(() => {
+    const container = messagesRef.current;
+    if (!container) return;
+
+    const distanceFromBottom =
+      container.scrollHeight -
+      container.scrollTop -
+      container.clientHeight;
+    const nearBottom = distanceFromBottom <= 100;
+
+    shouldStickToBottomRef.current = nearBottom;
+    setShowScrollButton(
+      !nearBottom &&
+      container.scrollHeight > container.clientHeight
     );
+  }, []);
 
-  const [messages, setMessages] =
-    useState([]);
+  const handleMessage = useCallback(
+    (payload) => {
+      const incomingMessage = payload?.message;
+      if (!incomingMessage) return;
 
-  const [text, setText] =
-    useState('');
+      const rideId =
+        incomingMessage.ride?._id ||
+        incomingMessage.ride ||
+        incomingMessage.rideId;
 
-  const handleMessage =
-    useCallback(
-      (payload) => {
-        const rideId =
-          payload.message?.ride?._id ||
-          payload.message?.ride;
+      if (String(rideId) !== String(active?._id)) return;
+
+      setMessages((items) => {
+        const incomingId = incomingMessage._id;
 
         if (
-          rideId === active?._id
+          incomingId &&
+          items.some(
+            (item) =>
+              String(item._id) === String(incomingId)
+          )
         ) {
-          setMessages((items) => [
-            ...items,
-            payload.message
-          ]);
+          return items;
         }
-      },
-      [active?._id]
-    );
 
-  const handleNotification =
-    useCallback(() => {}, []);
+        return [...items, incomingMessage];
+      });
+    },
+    [active?._id]
+  );
 
-  const socket =
-    useCampusSocket(
-      token,
-      handleMessage,
-      handleNotification
-    );
+  const handleNotification = useCallback(() => {}, []);
+
+  const socket = useCampusSocket(
+    token,
+    handleMessage,
+    handleNotification
+  );
+
+  useEffect(() => {
+    if (!active) {
+      setMessages([]);
+      setShowScrollButton(false);
+      return undefined;
+    }
+
+    shouldStickToBottomRef.current = true;
+    setShowScrollButton(false);
+
+    request(`/messages/${active._id}`)
+      .then(({ messages: items }) => {
+        setMessages(Array.isArray(items) ? items : []);
+      })
+      .catch(() => setMessages([]));
+
+    socket.current?.emit('joinRideRoom', active._id);
+
+    return () => {
+      socket.current?.emit('leaveRideRoom', active._id);
+    };
+  }, [active?._id, request]);
 
   useEffect(() => {
     if (!active) return;
 
-    request(
-      `/messages/${active._id}`
-    )
-      .then(
-        ({ messages: items }) =>
-          setMessages(items)
-      )
-      .catch(() =>
-        setMessages([])
-      );
+    shouldStickToBottomRef.current = true;
+    setShowScrollButton(false);
 
-    socket.current?.emit(
-      'joinRideRoom',
-      active._id
-    );
+    requestAnimationFrame(() => {
+      scrollToLatest(false);
+    });
+  }, [active?._id, scrollToLatest]);
 
-    return () => {
-      socket.current?.emit(
-        'leaveRideRoom',
-        active._id
-      );
-    };
-  }, [
-    active?._id,
-    request
-  ]);
+  useEffect(() => {
+    const container = messagesRef.current;
+    if (!container) return;
+
+    requestAnimationFrame(() => {
+      if (shouldStickToBottomRef.current) {
+        scrollToLatest(true);
+        setShowScrollButton(false);
+      } else {
+        setShowScrollButton(
+          container.scrollHeight > container.clientHeight
+        );
+      }
+    });
+  }, [messages.length, scrollToLatest]);
 
   const send = async (event) => {
     event.preventDefault();
 
-    if (
-      !text.trim() ||
-      !active
-    ) {
-      return;
-    }
+    if (!text.trim() || !active) return;
 
-    const content =
-      text.trim();
-
+    const content = text.trim();
     setText('');
+    shouldStickToBottomRef.current = true;
+    setShowScrollButton(false);
 
-    if (
-      socket.current?.connected
-    ) {
-      socket.current.emit(
-        'sendMessage',
-        {
-          rideId: active._id,
-          message: content
-        }
-      );
+    if (socket.current?.connected) {
+      socket.current.emit('sendMessage', {
+        rideId: active._id,
+        message: content
+      });
     } else {
       try {
-        const result =
-          await request(
-            `/messages/${active._id}`,
-            {
-              method: 'POST',
-              body: JSON.stringify({
-                message: content
-              })
-            }
-          );
-
-        setMessages((items) => [
-          ...items,
-          result.message
-        ]);
-      } catch (error) {
-        window.alert(
-          error.message
+        const result = await request(
+          `/messages/${active._id}`,
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              message: content
+            })
+          }
         );
+
+        if (result?.message) {
+          setMessages((items) => {
+            const incomingId = result.message._id;
+
+            if (
+              incomingId &&
+              items.some(
+                (item) =>
+                  String(item._id) === String(incomingId)
+              )
+            ) {
+              return items;
+            }
+
+            return [...items, result.message];
+          });
+        }
+      } catch (error) {
+        setText(content);
+        window.alert(error.message);
       }
     }
   };
 
+  const currentUserId = user?._id || user?.id;
+
   return (
     <section className="subpage messages-page">
-
       <div className="welcome-row">
         <div>
-          <p className="eyebrow">
-            PRIVATE RIDE CHAT
-          </p>
-
+          <p className="eyebrow">PRIVATE RIDE CHAT</p>
           <h1>
             Your <em>messages.</em>
           </h1>
-
           <p className="muted">
-            Conversations stay available to
-            accepted ride participants.
+            Conversations stay available to accepted ride participants.
           </p>
         </div>
       </div>
 
       <div className="chat-layout">
-
         <aside className="conversation-list">
-
           {conversations.length ? (
-            conversations.map(
-              (ride) => (
-                <button
-                  className={
-                    active?._id === ride._id
-                      ? 'conversation active'
-                      : 'conversation'
-                  }
-                  key={ride._id}
-                  onClick={() =>
-                    setActive(ride)
-                  }
-                >
-                  <span className="avatar small">
-                    {initials(
-                      ride.creator?.name ||
-                      user.name
-                    )}
-                  </span>
-
-                  <span>
-                    <b>
-                      {ride.source} to{' '}
-                      {ride.destination}
-                    </b>
-
-                    <small>
-                      {dateLabel(
-                        ride.date
-                      )}
-                    </small>
-                  </span>
-                </button>
-              )
-            )
+            conversations.map((ride) => (
+              <button
+                type="button"
+                className={
+                  active?._id === ride._id
+                    ? 'conversation active'
+                    : 'conversation'
+                }
+                key={ride._id}
+                onClick={() => setActive(ride)}
+              >
+                <span className="avatar small">
+                  {initials(
+                    ride.creator?.name || user?.name
+                  )}
+                </span>
+                <span>
+                  <b>
+                    {ride.source} to {ride.destination}
+                  </b>
+                  <small>{dateLabel(ride.date)}</small>
+                </span>
+              </button>
+            ))
           ) : (
-            <div className="chat-empty">
-              No conversations yet.
-            </div>
+            <div className="chat-empty">No conversations yet.</div>
           )}
-
         </aside>
 
         <div className="chat-thread">
-
           {active ? (
             <>
               <div className="chat-thread-head">
-                <b>
-                  {active.source} to{' '}
-                  {active.destination}
-                </b>
+                <div className="chat-thread-person">
+                  <span className="avatar small">
+                    {(active.creator?.avatar || active.creator?.profileImage || user?.avatar || user?.profileImage) ? (
+                      <img
+                        className="avatar-photo"
+                        src={active.creator?.avatar || active.creator?.profileImage || user?.avatar || user?.profileImage}
+                        alt={active.creator?.name || user?.name || 'Student'}
+                      />
+                    ) : (
+                      initials(active.creator?.name || user?.name)
+                    )}
+                  </span>
+                  <div>
+                    <b>
+                      {active.source} to {active.destination}
+                    </b>
+                    <small>
+                      {active.creator?.name || 'Ride conversation'}
+                    </small>
+                  </div>
+                </div>
 
-                <small>
-                  {active.creator?.name ||
-                    'Ride conversation'}
-                </small>
+                <div className="chat-live-badge">
+                  <span />
+                  Live chat
+                </div>
               </div>
 
-              <div className="chat-messages">
+              <div className="chat-messages-wrap">
+                <div
+                  className="chat-messages"
+                  ref={messagesRef}
+                  onScroll={handleMessagesScroll}
+                >
+                  {messages.length ? (
+                    messages.map((message, index) => {
+                      const senderId =
+                        message.sender?._id ||
+                        message.sender?.id ||
+                        message.sender ||
+                        message.senderId;
 
-                {messages.map(
-                  (message) => (
-                    <div
-                      className={
-                        String(
-                          message.sender?._id ||
-                            message.sender
-                        ) ===
-                        String(user._id)
-                          ? 'chat-bubble mine'
-                          : 'chat-bubble'
-                      }
-                      key={
-                        message._id ||
-                        `${message.createdAt}-${message.message}`
-                      }
-                    >
-                      <span>
-                        {message.message}
-                      </span>
+                      const isMine =
+                        String(senderId) === String(currentUserId);
 
-                      <small>
-                        {new Date(
-                          message.createdAt
-                        ).toLocaleTimeString(
-                          [],
-                          {
-                            hour: '2-digit',
-                            minute: '2-digit'
+                      return (
+                        <div
+                          className={
+                            isMine
+                              ? 'chat-bubble receiver'
+                              : 'chat-bubble sender'
                           }
-                        )}
-                      </small>
+                          key={
+                            message._id ||
+                            `${message.createdAt || 'message'}-${index}-${message.message}`
+                          }
+                        >
+                          <span>{message.message}</span>
+                          <small>
+                            {message.createdAt
+                              ? new Date(
+                                  message.createdAt
+                                ).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
+                              : ''}
+                          </small>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="chat-empty chat-empty-messages">
+                      <div className="chat-empty-icon">
+                        <MessageCircle size={20} />
+                      </div>
+                      <b>Start the conversation</b>
+                      <span>
+                        Send a message to the ride participants.
+                      </span>
                     </div>
-                  )
-                )}
+                  )}
+                </div>
 
+                {showScrollButton && (
+                  <button
+                    type="button"
+                    className="chat-scroll-bottom"
+                    onClick={() => {
+                      shouldStickToBottomRef.current = true;
+                      setShowScrollButton(false);
+                      scrollToLatest(true);
+                    }}
+                    aria-label="Scroll to latest message"
+                    title="Scroll to latest message"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                )}
               </div>
 
-              <form
-                className="chat-compose"
-                onSubmit={send}
-              >
+              <form className="chat-compose" onSubmit={send}>
                 <input
                   value={text}
-                  onChange={(event) =>
-                    setText(
-                      event.target.value
-                    )
-                  }
+                  onChange={(event) => setText(event.target.value)}
                   placeholder="Write a message..."
+                  aria-label="Write a message"
+                  autoComplete="off"
                 />
-
                 <button
+                  type="submit"
                   className="primary-button"
                   disabled={!text.trim()}
+                  aria-label="Send message"
+                  title="Send message"
                 >
                   <Send size={16} />
                 </button>
@@ -615,10 +697,8 @@ function MessagesView({
               Join a ride to unlock its private chat.
             </div>
           )}
-
         </div>
       </div>
-
     </section>
   );
 }
