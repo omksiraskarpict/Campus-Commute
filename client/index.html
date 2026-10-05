@@ -5,9 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#191637" />
     <title>Campus Commute</title>
-      <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <style>
+      #app-loader {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        background: #ffffff;
+        transition: opacity 0.4s ease;
+      }
+
+      #app-loader.hide {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      #app-loader img {
+        width: min(560px, 90vw);
+        height: auto;
+    }
+    </style>
   </head>
-  <body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body>
+
+  <body>
+    <div id="app-loader" role="status" aria-label="Loading">
+      <img src="/loader.gif" alt="Loading..." />
+    </div>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
-
-

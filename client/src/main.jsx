@@ -248,6 +248,43 @@ function loadGoogleIdentityScript() {
 
 
 /* =========================================================
+   INITIAL PAGE LOADER (markup lives in index.html)
+   ========================================================= */
+
+const MIN_LOADER_MS = 1200; // minimum time the animation stays visible
+
+function hideInitialLoader() {
+
+  const el =
+    document.getElementById(
+      'app-loader'
+    );
+
+  if (!el) return;
+
+
+  const wait =
+    Math.max(
+      0,
+      MIN_LOADER_MS - performance.now()
+    );
+
+
+  setTimeout(() => {
+
+    el.classList.add('hide');
+
+    setTimeout(
+      () => el.remove(),
+      450
+    );
+
+  }, wait);
+
+}
+
+
+/* =========================================================
    APP
    ========================================================= */
 
@@ -271,6 +308,16 @@ function App() {
 
   const [loading, setLoading] =
     useState(true);
+
+
+  // Fade out the page loader once the app has finished loading
+  useEffect(() => {
+
+    if (!loading) {
+      hideInitialLoader();
+    }
+
+  }, [loading]);
 
 
   useEffect(() => {
@@ -343,9 +390,11 @@ function App() {
 
       <div className="loading-screen">
 
-        <div className="logo-mark">
-          CC
-        </div>
+        <img
+          className="loader-gif"
+          src="/loader.gif"
+          alt=""
+        />
 
         <span>
           Getting your commute ready...

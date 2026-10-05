@@ -8646,3 +8646,8 @@ body:has(.messages-page) .main-content {
     max-height: calc(100dvh - 72px) !important;
   }
 }
+
+.loading-screen .loader-gif {
+  width: min(560px, 90vw);
+  height: auto;
+}
