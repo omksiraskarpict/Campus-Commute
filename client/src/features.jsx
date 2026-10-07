@@ -167,7 +167,7 @@ function Assistant({ request }) {
       {
         role: 'assistant',
         content:
-          "Hi! I'm the Campus Commute Assistant. How can I help you today?"
+          "Hi! I'm the Campus Commute Assistant. Ask me anything about Campus Commute or any general question."
       }
     ]);
 
@@ -177,63 +177,222 @@ function Assistant({ request }) {
   const [busy, setBusy] =
     useState(false);
 
-  useEffect(() => {
-    if (!open) return;
+  const [loadingHistory, setLoadingHistory] =
+    useState(false);
 
-    request(
-      '/chatbot/conversation'
-    )
-      .then(({ messages: saved }) => {
-        if (saved?.length) {
+  const [historyLoaded, setHistoryLoaded] =
+    useState(false);
+
+  const messagesRef = useRef(null);
+
+  const MAX_MESSAGE_LENGTH = 2000;
+
+  // ==========================================================
+  // AUTO SCROLL CHAT
+  // ==========================================================
+
+  const scrollToLatest = useCallback(() => {
+    const container =
+      messagesRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
+    });
+  }, []);
+
+  // ==========================================================
+  // LOAD SAVED CONVERSATION
+  // ==========================================================
+
+  useEffect(() => {
+    if (!open || historyLoaded) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadConversation = async () => {
+      setLoadingHistory(true);
+
+      try {
+        const result =
+          await request(
+            '/chatbot/conversation'
+          );
+
+        if (
+          cancelled
+        ) {
+          return;
+        }
+
+        const saved =
+          Array.isArray(result?.messages)
+            ? result.messages
+            : [];
+
+        if (saved.length) {
           setMessages(saved);
         }
-      })
-      .catch(() => {});
-  }, [open, request]);
+
+        setHistoryLoaded(true);
+      } catch (error) {
+        if (!cancelled) {
+          setHistoryLoaded(true);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingHistory(false);
+        }
+      }
+    };
+
+    loadConversation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    historyLoaded,
+    request
+  ]);
+
+  // ==========================================================
+  // SCROLL WHEN MESSAGES CHANGE
+  // ==========================================================
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    scrollToLatest();
+  }, [
+    messages.length,
+    busy,
+    open,
+    scrollToLatest
+  ]);
+
+  // ==========================================================
+  // SEND MESSAGE
+  // ==========================================================
 
   const send = async (
     content = text
   ) => {
-    if (!content.trim() || busy) {
+    const cleanMessage =
+      String(content || '').trim();
+
+    if (
+      !cleanMessage ||
+      busy ||
+      loadingHistory
+    ) {
       return;
     }
 
+    if (
+      cleanMessage.length >
+      MAX_MESSAGE_LENGTH
+    ) {
+      setMessages((items) => [
+        ...items,
+        {
+          role: 'assistant',
+          content:
+            `Please keep your message under ${MAX_MESSAGE_LENGTH} characters.`
+        }
+      ]);
+
+      return;
+    }
+
+    // Clear input immediately.
     setText('');
 
+    // Show user's message immediately.
     setMessages((items) => [
       ...items,
       {
         role: 'user',
-        content
+        content: cleanMessage
       }
     ]);
 
     setBusy(true);
 
     try {
-      const result = await request(
-        '/chatbot/message',
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            message: content
-          })
-        }
-      );
+      const result =
+        await request(
+          '/chatbot/message',
+          {
+            method: 'POST',
+
+            body: JSON.stringify({
+              message: cleanMessage
+            })
+          }
+        );
+
+      const reply =
+        typeof result?.reply === 'string'
+          ? result.reply.trim()
+          : '';
+
+      if (!reply) {
+        throw new Error(
+          'The AI assistant returned an empty response.'
+        );
+      }
 
       setMessages((items) => [
         ...items,
         {
           role: 'assistant',
-          content: result.reply
+          content: reply
         }
       ]);
     } catch (error) {
+      const status =
+        error?.status;
+
+      let errorMessage =
+        error?.message ||
+        'Unable to connect to the AI assistant right now.';
+
+      // Friendly messages for common backend errors.
+      if (
+        status === 429
+      ) {
+        errorMessage =
+          'You have sent too many messages. Please wait a moment and try again.';
+      } else if (
+        status === 401 ||
+        status === 403
+      ) {
+        errorMessage =
+          'Your session has expired. Please log in again to use the AI assistant.';
+      } else if (
+        status === 503
+      ) {
+        errorMessage =
+          'The AI assistant is temporarily unavailable. Please try again later.';
+      }
+
       setMessages((items) => [
         ...items,
         {
           role: 'assistant',
-          content: error.message
+          content: errorMessage
         }
       ]);
     } finally {
@@ -241,32 +400,103 @@ function Assistant({ request }) {
     }
   };
 
+  // ==========================================================
+  // QUICK QUESTIONS
+  // ==========================================================
+
   const quick = [
-    'Find a ride',
+    'Find a ride for me',
     'How do I book a ride?',
     'How do I offer a ride?',
-    'My trips',
-    'My messages',
-    'Notifications',
-    'Profile help',
-    'Contact support'
+    'How do I join a ride?',
+    'Explain how Campus Commute works',
+    'How can I use the messaging feature?',
+    'How do notifications work?',
+    'What can you help me with?'
   ];
+
+  // ==========================================================
+  // HANDLE INPUT
+  // ==========================================================
+
+  const handleInputChange = (
+    event
+  ) => {
+    const value =
+      event.target.value;
+
+    if (
+      value.length <=
+      MAX_MESSAGE_LENGTH
+    ) {
+      setText(value);
+    }
+  };
+
+  // ==========================================================
+  // HANDLE ENTER KEY
+  // ==========================================================
+
+  const handleKeyDown = (
+    event
+  ) => {
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey
+    ) {
+      event.preventDefault();
+
+      send();
+    }
+  };
 
   return (
     <>
+      {/* ======================================================
+          FLOATING ASSISTANT BUTTON
+      ====================================================== */}
+
       <button
+        type="button"
         className="assistant-launch"
-        onClick={() => setOpen(!open)}
-        title="Open Campus Commute Assistant"
+        onClick={() =>
+          setOpen((value) => !value)
+        }
+        title={
+          open
+            ? 'Close Campus Commute Assistant'
+            : 'Open Campus Commute Assistant'
+        }
+        aria-label={
+          open
+            ? 'Close Campus Commute Assistant'
+            : 'Open Campus Commute Assistant'
+        }
       >
-        <Bot size={23} />
+        {open ? (
+          <X size={23} />
+        ) : (
+          <Bot size={23} />
+        )}
       </button>
 
+      {/* ======================================================
+          ASSISTANT PANEL
+      ====================================================== */}
+
       {open && (
-        <section className="assistant-panel">
+        <section
+          className="assistant-panel"
+          aria-label="Campus Commute AI Assistant"
+        >
+
+          {/* ==================================================
+              HEADER
+          ================================================== */}
 
           <header>
             <div className="assistant-title">
+
               <span className="assistant-avatar">
                 <Bot size={17} />
               </span>
@@ -277,32 +507,73 @@ function Assistant({ request }) {
                 </b>
 
                 <small>
-                  How can I help you?
+                  AI-powered help for your commute
                 </small>
               </div>
+
             </div>
 
             <button
+              type="button"
               className="icon-button"
-              onClick={() => setOpen(false)}
+              onClick={() =>
+                setOpen(false)
+              }
+              title="Close assistant"
+              aria-label="Close assistant"
             >
               <X size={17} />
             </button>
           </header>
 
-          <div className="assistant-messages">
-            {messages.map(
-              (item, index) => (
-                <div
-                  className={
-                    item.role === 'user'
-                      ? 'assistant-message user'
-                      : 'assistant-message'
-                  }
-                  key={`${item.timestamp || ''}-${index}`}
-                >
-                  {item.content}
-                </div>
+          {/* ==================================================
+              AI NOTICE
+          ================================================== */}
+
+          <div className="assistant-notice">
+            <Sparkles size={14} />
+
+            <span>
+              Ask about Campus Commute or any general question.
+            </span>
+          </div>
+
+          {/* ==================================================
+              MESSAGES
+          ================================================== */}
+
+          <div
+            className="assistant-messages"
+            ref={messagesRef}
+          >
+
+            {loadingHistory ? (
+              <div className="assistant-message">
+                <LoaderCircle
+                  size={15}
+                  className="spin"
+                />
+
+                Loading conversation...
+              </div>
+            ) : (
+              messages.map(
+                (item, index) => (
+                  <div
+                    className={
+                      item.role === 'user'
+                        ? 'assistant-message user'
+                        : 'assistant-message'
+                    }
+
+                    key={
+                      item._id ||
+                      `${item.timestamp || ''}-${index}`
+                    }
+                  >
+                    {item.content}
+                  </div>
+                )
               )
             )}
 
@@ -312,50 +583,133 @@ function Assistant({ request }) {
                   size={15}
                   className="spin"
                 />
+
                 Thinking...
               </div>
             )}
+
           </div>
 
+          {/* ==================================================
+              QUICK QUESTIONS
+          ================================================== */}
+
           <div className="assistant-quick">
-            {quick.map((item) => (
-              <button
-                key={item}
-                onClick={() => send(item)}
-              >
-                {item}
-              </button>
-            ))}
+
+            {quick.map(
+              (item) => (
+                <button
+                  type="button"
+                  key={item}
+                  disabled={
+                    busy ||
+                    loadingHistory
+                  }
+                  onClick={() =>
+                    send(item)
+                  }
+                >
+                  {item}
+                </button>
+              )
+            )}
+
           </div>
+
+          {/* ==================================================
+              INPUT AREA
+          ================================================== */}
 
           <form
             onSubmit={(event) => {
               event.preventDefault();
+
               send();
             }}
           >
-            <input
-              value={text}
-              onChange={(event) =>
-                setText(event.target.value)
-              }
-              placeholder="Ask Campus Commute..."
-            />
+
+            <div className="assistant-input-wrap">
+
+              <input
+                value={text}
+                onChange={
+                  handleInputChange
+                }
+
+                onKeyDown={
+                  handleKeyDown
+                }
+
+                maxLength={
+                  MAX_MESSAGE_LENGTH
+                }
+
+                disabled={
+                  busy ||
+                  loadingHistory
+                }
+
+                placeholder={
+                  busy
+                    ? 'Thinking...'
+                    : 'Ask anything...'
+                }
+
+                aria-label="Ask Campus Commute Assistant"
+                autoComplete="off"
+              />
+
+              {text.length > 0 && (
+                <span className="assistant-character-count">
+                  {text.length}/
+                  {MAX_MESSAGE_LENGTH}
+                </span>
+              )}
+
+            </div>
 
             <button
+              type="submit"
               disabled={
-                busy || !text.trim()
+                busy ||
+                loadingHistory ||
+                !text.trim()
               }
+
+              aria-label="Send message"
+              title="Send message"
             >
-              <Send size={16} />
+              {busy ? (
+                <LoaderCircle
+                  size={16}
+                  className="spin"
+                />
+              ) : (
+                <Send size={16} />
+              )}
             </button>
+
           </form>
+
+          {/* ==================================================
+              FOOTER
+          ================================================== */}
+
+          <div className="assistant-footer">
+            <ShieldCheck size={12} />
+
+            <span>
+              AI responses may not always be perfect. Do not share
+              passwords, API keys, or other sensitive information.
+            </span>
+          </div>
 
         </section>
       )}
     </>
   );
 }
+
 
 
 /* =========================================================
@@ -3668,3 +4022,4 @@ export function AdminTools({
     </main>
   );
 }
+

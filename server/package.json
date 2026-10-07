@@ -9,6 +9,8 @@
     "promote-admin": "node server/scripts/createAdmin.js"
   },
   "dependencies": {
+    "@google/genai": "^2.27.0",
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^2.4.3",
     "campus-commute": "file:..",
     "cors": "^2.8.5",

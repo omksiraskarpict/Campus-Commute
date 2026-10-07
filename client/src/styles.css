@@ -9055,3 +9055,672 @@ body:has(.messages-page) .main-content {
   width: min(560px, 90vw);
   height: auto;
 }
+
+/* Make AI chatbot input box longer */
+.assistant-panel > form {
+  gap: 10px !important;
+}
+
+.assistant-panel > form input {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Keep send button compact */
+.assistant-panel > form > button {
+  flex: 0 0 48px !important;
+  width: 48px !important;
+  height: 44px !important;
+}
+
+/* =========================================================
+   CAMPUS COMMUTE AI ASSISTANT - FINAL UI FIX
+   Keep this block at the END of styles.css
+========================================================= */
+
+/* ---------- Floating assistant button ---------- */
+
+.assistant-launch {
+  position: fixed !important;
+  right: 24px !important;
+  bottom: 24px !important;
+  z-index: 9999 !important;
+
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  min-height: 56px !important;
+
+  display: grid !important;
+  place-items: center !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  border: 0 !important;
+  border-radius: 50% !important;
+
+  background: var(--violet) !important;
+  color: #ffffff !important;
+
+  box-shadow:
+    0 12px 30px rgba(101, 86, 200, 0.32),
+    0 0 0 3px rgba(101, 86, 200, 0.12) !important;
+
+  cursor: pointer !important;
+}
+
+
+/* ---------- Main assistant panel ---------- */
+
+.assistant-panel {
+  position: fixed !important;
+
+  right: 24px !important;
+  bottom: 92px !important;
+
+  z-index: 9998 !important;
+
+  width: min(430px, calc(100vw - 32px)) !important;
+  height: min(620px, calc(100vh - 125px)) !important;
+  min-height: 480px !important;
+  max-height: calc(100vh - 105px) !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+
+  overflow: hidden !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  border: 1px solid rgba(110, 92, 230, 0.18) !important;
+  border-radius: 22px !important;
+
+  background: #ffffff !important;
+
+  box-shadow:
+    0 25px 70px rgba(25, 22, 55, 0.24),
+    0 8px 30px rgba(25, 22, 55, 0.10) !important;
+}
+
+
+/* ---------- Header ---------- */
+
+.assistant-panel > header {
+  flex: 0 0 auto !important;
+
+  width: 100% !important;
+  min-height: 84px !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+
+  box-sizing: border-box !important;
+
+  padding: 16px 18px !important;
+
+  border: 0 !important;
+
+  background:
+    radial-gradient(
+      circle at 88% 10%,
+      rgba(215, 242, 106, 0.16),
+      transparent 30%
+    ),
+    linear-gradient(
+      135deg,
+      #191637,
+      #30285e
+    ) !important;
+
+  color: #ffffff !important;
+}
+
+
+/* ---------- Assistant title ---------- */
+
+.assistant-title {
+  min-width: 0 !important;
+
+  display: flex !important;
+  align-items: center !important;
+
+  gap: 11px !important;
+}
+
+.assistant-title > div {
+  min-width: 0 !important;
+}
+
+.assistant-title b {
+  display: block !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  color: #ffffff !important;
+
+  font-size: 15px !important;
+  line-height: 1.25 !important;
+  font-weight: 700 !important;
+
+  white-space: nowrap !important;
+}
+
+.assistant-title small {
+  display: block !important;
+
+  margin: 4px 0 0 !important;
+  padding: 0 !important;
+
+  color: #c9c5dd !important;
+
+  font-size: 11px !important;
+  line-height: 1.3 !important;
+}
+
+
+/* ---------- Bot avatar ---------- */
+
+.assistant-avatar {
+  flex: 0 0 34px !important;
+
+  width: 34px !important;
+  height: 34px !important;
+
+  display: grid !important;
+  place-items: center !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  border-radius: 10px !important;
+
+  background: var(--lime) !important;
+  color: var(--deep) !important;
+
+  box-shadow:
+    0 6px 18px rgba(215, 242, 106, 0.20) !important;
+}
+
+
+/* ---------- Close button ---------- */
+
+.assistant-panel .icon-button {
+  flex: 0 0 34px !important;
+
+  width: 34px !important;
+  height: 34px !important;
+
+  display: grid !important;
+  place-items: center !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  border: 0 !important;
+  border-radius: 50% !important;
+
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #c9c5dd !important;
+
+  cursor: pointer !important;
+}
+
+.assistant-panel .icon-button:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+
+/* =========================================================
+   NOTICE
+========================================================= */
+
+.assistant-notice {
+  flex: 0 0 auto !important;
+
+  width: 100% !important;
+  min-height: 40px !important;
+
+  display: flex !important;
+  align-items: center !important;
+
+  box-sizing: border-box !important;
+
+  gap: 8px !important;
+
+  margin: 0 !important;
+  padding: 9px 14px !important;
+
+  border-bottom: 1px solid #ebe8f3 !important;
+
+  background:
+    linear-gradient(
+      90deg,
+      #faf9ff,
+      #ffffff
+    ) !important;
+
+  color: #5e5874 !important;
+
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+  font-weight: 500 !important;
+}
+
+.assistant-notice svg {
+  flex: 0 0 auto !important;
+
+  width: 14px !important;
+  height: 14px !important;
+
+  color: var(--violet) !important;
+}
+
+.assistant-notice span {
+  display: block !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+
+  color: #5e5874 !important;
+}
+
+
+/* =========================================================
+   MESSAGE AREA
+========================================================= */
+
+.assistant-messages {
+  flex: 1 1 auto !important;
+
+  min-height: 0 !important;
+
+  width: 100% !important;
+
+  box-sizing: border-box !important;
+
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+
+  padding: 15px !important;
+
+  background:
+    linear-gradient(
+      180deg,
+      #fbfaff 0%,
+      #f8f7fc 100%
+    ) !important;
+
+  scrollbar-width: thin !important;
+  scrollbar-color: #d4cfea transparent !important;
+}
+
+.assistant-messages::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.assistant-messages::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.assistant-messages::-webkit-scrollbar-thumb {
+  background: #d4cfea !important;
+  border-radius: 20px !important;
+}
+
+
+/* ---------- Individual messages ---------- */
+
+.assistant-message {
+  display: block !important;
+
+  width: fit-content !important;
+  max-width: 84% !important;
+
+  box-sizing: border-box !important;
+
+  margin: 0 0 9px !important;
+  padding: 10px 12px !important;
+
+  border: 0 !important;
+  border-radius: 14px 14px 14px 4px !important;
+
+  background: #eeecfa !important;
+  color: #27243a !important;
+
+  font-size: 12px !important;
+  line-height: 1.55 !important;
+  font-weight: 400 !important;
+
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+.assistant-message.user {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+
+  border-radius: 14px 14px 4px 14px !important;
+
+  background:
+    linear-gradient(
+      135deg,
+      #6556c8,
+      #5143b2
+    ) !important;
+
+  color: #ffffff !important;
+}
+
+
+/* =========================================================
+   QUICK QUESTIONS
+========================================================= */
+
+.assistant-quick {
+  flex: 0 0 auto !important;
+
+  width: 100% !important;
+
+  box-sizing: border-box !important;
+
+  display: flex !important;
+  align-items: center !important;
+
+  gap: 7px !important;
+
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+
+  padding: 10px 12px !important;
+
+  border-top: 1px solid #ebe8f3 !important;
+
+  background: #ffffff !important;
+
+  scrollbar-width: none !important;
+}
+
+.assistant-quick::-webkit-scrollbar {
+  display: none !important;
+}
+
+.assistant-quick button {
+  flex: 0 0 auto !important;
+
+  width: auto !important;
+  min-width: max-content !important;
+
+  margin: 0 !important;
+  padding: 7px 11px !important;
+
+  border: 1px solid #e2dff0 !important;
+  border-radius: 999px !important;
+
+  background: #fbfaff !important;
+  color: #6556c8 !important;
+
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  font-weight: 600 !important;
+
+  white-space: nowrap !important;
+
+  cursor: pointer !important;
+}
+
+.assistant-quick button:hover {
+  border-color: #cfc7ed !important;
+
+  background: #f2efff !important;
+
+  transform: translateY(-1px) !important;
+}
+
+.assistant-quick button:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+}
+
+
+/* =========================================================
+   INPUT AREA
+========================================================= */
+
+.assistant-panel > form {
+  flex: 0 0 auto !important;
+
+  width: 100% !important;
+
+  box-sizing: border-box !important;
+
+  display: flex !important;
+  align-items: center !important;
+
+  gap: 9px !important;
+
+  margin: 0 !important;
+  padding: 11px 12px !important;
+
+  border-top: 1px solid #ebe8f3 !important;
+
+  background: #ffffff !important;
+}
+
+.assistant-panel > form input {
+  flex: 1 1 auto !important;
+
+  width: auto !important;
+  min-width: 0 !important;
+  height: 44px !important;
+
+  box-sizing: border-box !important;
+
+  margin: 0 !important;
+  padding: 0 13px !important;
+
+  border: 1px solid #ded9eb !important;
+  border-radius: 12px !important;
+
+  outline: none !important;
+
+  background: #ffffff !important;
+  color: #27243a !important;
+
+  font-family: inherit !important;
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+}
+
+.assistant-panel > form input::placeholder {
+  color: #9993aa !important;
+}
+
+.assistant-panel > form input:focus {
+  border-color: #6556c8 !important;
+
+  box-shadow:
+    0 0 0 3px rgba(101, 86, 200, 0.10) !important;
+
+  transform: none !important;
+}
+
+
+/* ---------- Send button ---------- */
+
+.assistant-panel > form > button {
+  flex: 0 0 44px !important;
+
+  width: 44px !important;
+  height: 44px !important;
+
+  display: grid !important;
+  place-items: center !important;
+
+  padding: 0 !important;
+  margin: 0 !important;
+
+  border: 0 !important;
+  border-radius: 12px !important;
+
+  background:
+    linear-gradient(
+      135deg,
+      #6556c8,
+      #5546b8
+    ) !important;
+
+  color: #ffffff !important;
+
+  cursor: pointer !important;
+}
+
+.assistant-panel > form > button:hover:not(:disabled) {
+  transform: translateY(-1px) !important;
+
+  box-shadow:
+    0 8px 18px rgba(101, 86, 200, 0.25) !important;
+}
+
+.assistant-panel > form > button:disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+}
+
+
+/* =========================================================
+   FOOTER / SECURITY NOTICE
+========================================================= */
+
+.assistant-footer {
+  flex: 0 0 auto !important;
+
+  width: 100% !important;
+  min-height: 34px !important;
+
+  display: flex !important;
+  align-items: flex-start !important;
+
+  box-sizing: border-box !important;
+
+  gap: 6px !important;
+
+  margin: 0 !important;
+  padding: 7px 12px 9px !important;
+
+  border-top: 1px solid #f0edf5 !important;
+
+  background: #faf9fd !important;
+
+  color: #8a849b !important;
+
+  font-size: 9px !important;
+  line-height: 1.35 !important;
+  font-weight: 400 !important;
+}
+
+.assistant-footer svg {
+  flex: 0 0 auto !important;
+
+  width: 12px !important;
+  height: 12px !important;
+
+  margin-top: 1px !important;
+
+  color: #77708f !important;
+}
+
+.assistant-footer span {
+  display: block !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  color: #8a849b !important;
+
+  font-size: 9px !important;
+  line-height: 1.35 !important;
+}
+
+
+/* =========================================================
+   THINKING / LOADER
+========================================================= */
+
+.assistant-message .spin {
+  flex: 0 0 auto !important;
+
+  width: 14px !important;
+  height: 14px !important;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+  .assistant-panel {
+    right: 10px !important;
+    bottom: 78px !important;
+
+    width: calc(100vw - 20px) !important;
+
+    height: min(620px, calc(100vh - 100px)) !important;
+
+    min-height: 430px !important;
+
+    border-radius: 18px !important;
+  }
+
+  .assistant-panel > header {
+    min-height: 76px !important;
+
+    padding: 14px !important;
+  }
+
+  .assistant-title b {
+    font-size: 14px !important;
+  }
+
+  .assistant-title small {
+    font-size: 10px !important;
+  }
+
+  .assistant-notice {
+    font-size: 10px !important;
+  }
+
+  .assistant-notice span {
+    font-size: 10px !important;
+  }
+
+  .assistant-message {
+    max-width: 88% !important;
+
+    font-size: 12px !important;
+  }
+
+  .assistant-footer {
+    font-size: 8px !important;
+  }
+
+  .assistant-footer span {
+    font-size: 8px !important;
+  }
+
+  .assistant-launch {
+    right: 16px !important;
+    bottom: 16px !important;
+  }
+}
