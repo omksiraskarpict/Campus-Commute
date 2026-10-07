@@ -56,6 +56,41 @@ const dateLabel = (value) =>
       })
     : '';
 
+const parseRideDate = (ride) => {
+  if (!ride?.date) return Number.POSITIVE_INFINITY;
+
+  const base = new Date(ride.date);
+
+  if (Number.isNaN(base.getTime())) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  const [hours = '0', minutes = '0'] = String(ride.departureTime || '00:00').split(':');
+  base.setHours(Number(hours) || 0, Number(minutes) || 0, 0, 0);
+
+  return base.getTime();
+};
+
+const isRideUpcoming = (ride) => {
+  if (!ride || ride.status === 'CANCELLED' || ride.status === 'COMPLETED' || ride.status === 'EXPIRED') {
+    return false;
+  }
+
+  return parseRideDate(ride) >= Date.now();
+};
+
+const sortRidesByDate = (rides = []) => [...rides].sort((left, right) => parseRideDate(left) - parseRideDate(right));
+
+const routeLabel = (source, destination) => (
+  <span className="route-inline">
+    <MapPin size={13} />
+    <span>
+      {source || 'Source'}
+      <ChevronRight size={12} />
+      {destination || 'Destination'}
+    </span>
+  </span>
+);
 
 /* =========================================================
    SOCKET
@@ -331,7 +366,8 @@ function MessagesView({
   request,
   rides,
   token,
-  user
+  user,
+  activeRideId
 }) {
   const conversations = [
     ...(rides.created || []),
@@ -343,9 +379,15 @@ function MessagesView({
       ) === index
   );
 
-  const [active, setActive] = useState(
-    conversations[0] || null
-  );
+  const [active, setActive] = useState(() => {
+    if (activeRideId) {
+      return conversations.find(
+        (ride) => String(ride._id) === String(activeRideId)
+      ) || conversations[0] || null;
+    }
+
+    return conversations[0] || null;
+  });
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
 
@@ -420,6 +462,25 @@ function MessagesView({
   );
 
   useEffect(() => {
+    if (!conversations.length) {
+      setActive(null);
+      setMessages([]);
+      setShowScrollButton(false);
+      return undefined;
+    }
+
+    const nextActive = activeRideId
+      ? conversations.find(
+          (ride) => String(ride._id) === String(activeRideId)
+        ) || conversations[0]
+      : conversations[0];
+
+    if (String(active?._id || '') !== String(nextActive?._id || '')) {
+      setActive(nextActive || null);
+    }
+  }, [activeRideId, conversations]);
+
+  useEffect(() => {
     if (!active) {
       setMessages([]);
       setShowScrollButton(false);
@@ -440,7 +501,7 @@ function MessagesView({
     return () => {
       socket.current?.emit('leaveRideRoom', active._id);
     };
-  }, [active?._id, request]);
+  }, [active?._id, request, socket]);
 
   useEffect(() => {
     if (!active) return;
@@ -1304,7 +1365,10 @@ function SettingsView({
 function TripsView({
   request,
   rides,
-  setRides
+  setRides,
+  setScreen,
+  onOpenChat,
+  user
 }) {
   const [loading, setLoading] =
     useState(true);
@@ -1320,6 +1384,14 @@ function TripsView({
 
   const [selectedRideId, setSelectedRideId] =
     useState('');
+
+  const [reportState, setReportState] = useState({
+    open: false,
+    rideId: '',
+    reportedUserId: '',
+    reason: 'Ride issue',
+    description: ''
+  });
 
   const loadTrips = async () => {
     setLoading(true);
@@ -1396,24 +1468,144 @@ function TripsView({
       }
     };
 
+  const removeParticipant = async (rideId, requestId) => {
+    if (!rideId || !requestId || busyId) return;
+
+    const confirmed = window.confirm('Are you sure you want to remove this student from the ride?');
+    if (!confirmed) return;
+
+    setBusyId(requestId);
+    setError('');
+    setSuccess('');
+
+    try {
+      await request(`/rides/${rideId}/requests/${requestId}/remove`, {
+        method: 'POST'
+      });
+
+      setSuccess('Student removed from the ride.');
+      await loadTrips();
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setBusyId('');
+    }
+  };
+
+  const leaveRide = async (rideId) => {
+    const confirmed = window.confirm('Are you sure you want to leave this ride?');
+    if (!confirmed) return;
+
+    try {
+      await request(`/rides/${rideId}/leave`, {
+        method: 'POST'
+      });
+
+      setSuccess('You left the ride.');
+      await loadTrips();
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const cancelRide = async (rideId) => {
+    const confirmed = window.confirm('Are you sure you want to cancel this ride? This action cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      await request(`/rides/${rideId}/cancel`, {
+        method: 'POST'
+      });
+
+      setSuccess('Ride cancelled successfully.');
+      await loadTrips();
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
+  const submitReport = async () => {
+    const description = reportState.description.trim();
+    const reason = reportState.reason.trim();
+
+    if (!reportState.rideId || !description || !reason) {
+      setError('Please add a category and a short description before submitting the report.');
+      return;
+    }
+
+    try {
+      await request(`/rides/${reportState.rideId}/report`, {
+        method: 'POST',
+        body: JSON.stringify({
+          reason,
+          description,
+          reportedUser: reportState.reportedUserId || undefined
+        })
+      });
+
+      setSuccess('Report submitted successfully.');
+      setReportState({
+        open: false,
+        rideId: '',
+        reportedUserId: '',
+        reason: 'Ride issue',
+        description: ''
+      });
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
   const created =
-    rides.created || [];
+    sortRidesByDate(rides.created || []);
 
   const joined =
-    rides.joined || [];
+    sortRidesByDate(rides.joined || []);
 
   const pending =
-    rides.pending || [];
+    sortRidesByDate(rides.pending || []);
 
   const rejected =
     rides.rejected || [];
 
   const incomingRequests =
-    rides.incomingRequests || [];
+    (rides.incomingRequests || []).slice().sort((left, right) => {
+      const leftDate = left?.createdAt ? new Date(left.createdAt).getTime() : 0;
+      const rightDate = right?.createdAt ? new Date(right.createdAt).getTime() : 0;
+      return rightDate - leftDate;
+    });
+
+  const upcomingCreated = created.filter(isRideUpcoming);
+  const pastCreated = created.filter((ride) => !isRideUpcoming(ride));
+  const upcomingJoined = joined.filter(isRideUpcoming);
+  const pastJoined = joined.filter((ride) => !isRideUpcoming(ride));
+
+  const activeChats = [...created, ...joined]
+    .filter(
+      (ride, index, list) =>
+        list.findIndex((item) => String(item._id) === String(ride._id)) === index
+    )
+    .filter((ride) => {
+      if (!ride || !ride.creator) return false;
+
+      const creatorId = String(ride.creator._id || ride.creator);
+      if (creatorId === String(user?._id)) return false;
+
+      return ride.status === 'ACTIVE' || ride.status === 'FULL' || ride.status === 'COMPLETED';
+    });
+
+  const openChat = (ride) => {
+    if (onOpenChat) {
+      onOpenChat(ride);
+      return;
+    }
+
+    setScreen('messages');
+  };
 
   if (loading) {
     return (
-      <section className="subpage">
+      <section className="subpage trips-page">
         <div className="admin-loading">
           Loading trips...
         </div>
@@ -1422,7 +1614,7 @@ function TripsView({
   }
 
   return (
-    <section className="subpage">
+    <section className="subpage trips-page">
 
       <div className="welcome-row">
 
@@ -1456,454 +1648,396 @@ function TripsView({
         </div>
       )}
 
+      {activeChats.length > 0 && (
+        <section className="trip-section active-chats-section">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">
+                ACTIVE CHATS
+              </p>
 
-      {/* =================================================
-          INCOMING REQUESTS
-      ================================================= */}
-
-      <section className="trip-section">
-
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">
-              RIDE REQUESTS
-            </p>
-
-            <h2>
-              Join requests
-            </h2>
+              <h2>
+                Active conversations
+              </h2>
+            </div>
           </div>
 
-          {incomingRequests.filter(
-            (item) => item.status === 'PENDING'
-          ).length > 0 && (
+          <div className="active-chat-list">
+            {activeChats.map((ride) => {
+              const driver = ride.creator || user;
+              const driverName = driver?.name || 'Driver';
+              const driverRating = Number(driver?.rating || 0);
+              const isVerified = driver?.verificationStatus === 'VERIFIED';
+              const vehicleModel = ride.vehicle?.model || ride.vehicle?.type || 'Campus ride';
+              const plate = ride.vehicle?.registration?.trim();
+
+              return (
+                <article className="active-chat-card" key={ride._id}>
+                  <div className="active-chat-main">
+                    <div className="active-chat-user">
+                      <div className="avatar active-chat-avatar">
+                        {driver?.profileImage || driver?.avatar ? (
+                          <img
+                            className="avatar-photo"
+                            src={driver.profileImage || driver.avatar}
+                            alt={driverName}
+                          />
+                        ) : (
+                          initials(driverName)
+                        )}
+                      </div>
+
+                      <div className="active-chat-copy">
+                        <div className="active-chat-name-row">
+                          <b>{driverName}</b>
+                          {isVerified && (
+                            <span className="verified-inline-badge" title="Verified user">
+                              <ShieldCheck size={12} />
+                            </span>
+                          )}
+                        </div>
+
+                        <small className="active-chat-rating">
+                          {'★'.repeat(
+                            Math.min(5, Math.max(1, Math.round(driverRating || 4.8)))
+                          )}{' '}
+                          {driverRating ? driverRating.toFixed(1) : '4.8'}
+                        </small>
+                      </div>
+                    </div>
+
+                    <div className="active-chat-meta">
+                      <div className="active-chat-vehicle">
+                        <CarFront size={14} />
+                        <span>{vehicleModel}</span>
+                      </div>
+
+                      {plate ? (
+                        <small className="active-chat-plate">Plate: {plate}</small>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="primary-button active-chat-button"
+                    onClick={() => openChat(ride)}
+                  >
+                    Open Chat
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      <section className="trip-section">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">JOIN REQUESTS</p>
+            <h2>Join requests</h2>
+          </div>
+
+          {incomingRequests.filter((item) => item.status === 'PENDING').length > 0 && (
             <span className="status pending-status">
-              {incomingRequests.filter(
-                (item) => item.status === 'PENDING'
-              ).length}{' '}
-              pending
+              {incomingRequests.filter((item) => item.status === 'PENDING').length} pending
             </span>
           )}
         </div>
 
         {incomingRequests.length === 0 ? (
           <div className="empty-state">
-            <MessageCircle
-              size={28}
-            />
-
-            <h3>
-              No join requests yet
-            </h3>
-
-            <p>
-              Requests for your rides appear here
-              with their pending, accepted, or
-              rejected status.
-            </p>
+            <MessageCircle size={28} />
+            <h3>No join requests yet</h3>
+            <p>Requests for your rides appear here with their pending, accepted, or rejected status.</p>
           </div>
         ) : (
           <div className="request-list">
+            {incomingRequests.map((item) => {
+              const userRating = item.user?.rating != null && item.user.rating !== 0 ? Number(item.user.rating).toFixed(1) : 'N/A';
+              const tripRating = item.ride?.rating ?? item.tripRating ?? item.ride?.averageRating;
 
-            {incomingRequests.map(
-              (item) => (
-                <article
-                  className="request-card"
-                  key={item._id}
-                >
-
+              return (
+                <article className="request-card" key={item._id}>
                   <div className="request-user">
-
                     <div className="avatar">
-                      {initials(
-                        item.user?.name ||
-                          'Student'
+                      {item.user?.profileImage || item.user?.avatar ? (
+                        <img className="avatar-photo" src={item.user.profileImage || item.user.avatar} alt={item.user?.name || 'Student'} />
+                      ) : (
+                        initials(item.user?.name || 'Student')
                       )}
                     </div>
 
                     <div className="request-user-info">
+                      <div className="requester-name-row">
+                        <b>{item.user?.name || 'Student'}</b>
+                        {item.user?.verificationStatus === 'VERIFIED' && (
+                          <span className="verified-inline-badge" title="Verified user">
+                            <ShieldCheck size={12} />
+                          </span>
+                        )}
+                      </div>
+                      <small>{item.user?.email || ''}</small>
+                    </div>
+                  </div>
 
-                      <b>
-                        {item.user?.name ||
-                          'Student'}
-                      </b>
-
-                      <small>
-                        {item.user?.email ||
-                          ''}
-                      </small>
-
-                      <small>
-                        Rating:{' '}
-                        {Number(
-                          item.user?.rating || 0
-                        ).toFixed(1)}
-                      </small>
-
-                      {item.user?.department && (
-                        <small>
-                          {item.user.department}
-                          {item.user.year
-                            ? ` · Year ${item.user.year}`
-                            : ''}
-                        </small>
-                      )}
-
+                  <div className="request-main-metrics">
+                    <div className="request-route-row">
+                      {routeLabel(item.ride?.source || 'Route', item.ride?.destination || 'Destination')}
                     </div>
 
+                    <div className="request-metric-grid">
+                      <div>
+                        <span className="metric-label">Seats</span>
+                        <strong>{(item.ride?.currentPassengers ?? 0)} of {(item.ride?.maxPassengers ?? 0)}</strong>
+                      </div>
+
+                      <div>
+                        <span className="metric-label">User Rating</span>
+                        <strong>{userRating}</strong>
+                      </div>
+
+                      <div>
+                        <span className="metric-label">Trip Rating</span>
+                        <strong>{tripRating != null && tripRating !== '' && tripRating !== 0 ? Number(tripRating).toFixed(1) : 'N/A'}</strong>
+                      </div>
+
+                      <div>
+                        <span className="metric-label">Departure</span>
+                        <strong>{item.ride?.departureTime || '--:--'}</strong>
+                      </div>
+                    </div>
                   </div>
-
-
-                  <div className="request-ride">
-
-                    <b>
-                      {item.ride?.source}
-                      {' → '}
-                      {item.ride?.destination}
-                    </b>
-
-                    <small>
-                      {item.ride?.date
-                        ? new Date(
-                            item.ride.date
-                          ).toLocaleDateString()
-                        : ''}
-                    </small>
-
-                    <small>
-                      Departure:{' '}
-                      {item.ride
-                        ?.departureTime ||
-                        '--:--'}
-                    </small>
-
-                    <small>
-                      {item.ride
-                        ?.availableSeats ??
-                        0}{' '}
-                      seat(s) available
-                    </small>
-
-                  </div>
-
 
                   <div className="request-actions">
-
                     <span className={`request-status ${item.status.toLowerCase()}`}>
-                      {item.status}
+                      {item.status === 'ACCEPTED' ? '✓ ACCEPTED' : item.status}
                     </span>
 
-                    <button
-                      className="primary-button"
-                      disabled={
-                        busyId === item._id ||
-                        item.status !== 'PENDING'
-                      }
-                      onClick={() =>
-                        processRequest(
-                          item.ride._id,
-                          item._id,
-                          'accept'
-                        )
-                      }
-                    >
-                      {busyId === item._id
-                        ? 'Processing...'
-                        : 'Accept'}
-                    </button>
+                    {item.status === 'PENDING' ? (
+                      <>
+                        <button
+                          className="accept-button"
+                          disabled={busyId === item._id}
+                          onClick={() => processRequest(item.ride?._id, item._id, 'accept')}
+                        >
+                          {busyId === item._id ? 'Processing...' : 'Accept'}
+                        </button>
 
-                    <button
-                      className="soft-button"
-                      disabled={
-                        busyId === item._id ||
-                        item.status !== 'PENDING'
-                      }
-                      onClick={() =>
-                        processRequest(
-                          item.ride._id,
-                          item._id,
-                          'reject'
-                        )
-                      }
-                    >
-                      Reject
-                    </button>
-
+                        <button
+                          className="reject-button"
+                          disabled={busyId === item._id}
+                          onClick={() => processRequest(item.ride?._id, item._id, 'reject')}
+                        >
+                          Reject
+                        </button>
+                      </>
+                    ) : item.status === 'ACCEPTED' ? (
+                      <button
+                        className="soft-button danger-button"
+                        disabled={busyId === item._id}
+                        onClick={() => removeParticipant(item.ride?._id, item._id)}
+                      >
+                        {busyId === item._id ? 'Processing...' : 'Remove from ride'}
+                      </button>
+                    ) : null}
                   </div>
-
                 </article>
-              )
-            )}
-
+              );
+            })}
           </div>
         )}
-
       </section>
-
-
-      {/* =================================================
-          PENDING REQUESTS SENT BY CURRENT USER
-      ================================================= */}
 
       {pending.length > 0 && (
         <section className="trip-section">
-
           <div className="section-heading">
-
             <div>
-              <p className="eyebrow">
-                REQUESTS SENT
-              </p>
-
-              <h2>
-                Waiting for approval
-              </h2>
+              <p className="eyebrow">REQUESTS SENT</p>
+              <h2>Waiting for approval</h2>
             </div>
-
           </div>
 
           <div className="trip-list">
-
-            {pending.map(
-              (ride) => (
-                <article
-                  className="trip-item"
-                  key={ride._id}
-                >
-
-                  <div>
-                    <b>
-                      {ride.source} to{' '}
-                      {ride.destination}
-                    </b>
-
-                    <small>
-                      {dateLabel(
-                        ride.date
-                      )}
-                      {' · '}
-                      {ride.departureTime}
-                    </small>
-
-                    <small>
-                      Waiting for{' '}
-                      {ride.creator?.name ||
-                        'ride owner'}{' '}
-                      to accept.
-                    </small>
+            {pending.map((ride) => (
+              <article className="trip-item" key={ride._id}>
+                <div className="ride-summary-copy">
+                  <div className="route-inline summary-route">
+                    <MapPin size={13} />
+                    <span>
+                      {ride.source || 'Source'}
+                      <ChevronRight size={12} />
+                      {ride.destination || 'Destination'}
+                    </span>
                   </div>
 
-                  <span className="status pending-status">
-                    PENDING
-                  </span>
+                  <small>
+                    {dateLabel(ride.date)} · {ride.departureTime}
+                  </small>
+                  <small>Waiting for {ride.creator?.name || 'ride owner'} to accept.</small>
+                </div>
 
-                </article>
-              )
-            )}
-
+                <span className="status pending-status">PENDING</span>
+              </article>
+            ))}
           </div>
-
         </section>
       )}
 
-
-      {/* =================================================
-          CREATED RIDES
-      ================================================= */}
-
       <section className="trip-section">
-
         <div className="section-heading">
-
           <div>
-            <p className="eyebrow">
-              YOUR RIDES
-            </p>
-
-            <h2>
-              Created rides
-            </h2>
+            <p className="eyebrow">YOUR RIDES</p>
+            <h2>Created rides</h2>
           </div>
-
         </div>
 
         <div className="trip-list">
-
-          {created.map(
-            (ride) => (
-              <React.Fragment key={ride._id}>
-                <article
-                  className="trip-item"
-                >
-
-                <div>
-                  <b>
-                    {ride.source} to{' '}
-                    {ride.destination}
-                  </b>
-
-                  <small>
-                    {dateLabel(
-                      ride.date
-                    )}
-                    {' · '}
-                    {ride.departureTime}
-                  </small>
-
-                  <small>
-                    {ride.currentPassengers || 0}
-                    {' / '}
-                    {ride.maxPassengers || 0}
-                    {' passengers'}
-                  </small>
+          {[...upcomingCreated, ...pastCreated].map((ride) => (
+            <React.Fragment key={ride._id}>
+              <article className="trip-item trip-ride-card">
+                <div className="ride-summary-copy">
+                  <div className="route-inline summary-route"> {routeLabel(ride.source, ride.destination)} </div>
+                  <small>{dateLabel(ride.date)} · {ride.departureTime}</small>
+                  <small>{ride.currentPassengers ?? 0} of {ride.maxPassengers ?? 0} passengers</small>
                 </div>
 
                 <div className="trip-actions">
-                  <span className="status verified-status">
+                  <span className={`status ${ride.status === 'CANCELLED' ? 'rejected-status' : ride.status === 'COMPLETED' ? 'verified-status' : 'verified-status'}`}>
                     {ride.status}
                   </span>
 
-                  <button
-                    className="soft-button"
-                    onClick={() => setSelectedRideId(
-                      selectedRideId === ride._id
-                        ? ''
-                        : ride._id
-                    )}
-                  >
-                    {selectedRideId === ride._id
-                      ? 'Hide requests'
-                      : 'View requests'}
-                  </button>
-                </div>
+                  {ride.status !== 'COMPLETED' && ride.status !== 'CANCELLED' && !isRideUpcoming(ride) ? null : (
+                    <button className="soft-button" onClick={() => setSelectedRideId(selectedRideId === ride._id ? '' : ride._id)}>
+                      {selectedRideId === ride._id ? 'Hide requests' : (ride.status === 'COMPLETED' || ride.status === 'CANCELLED' ? 'View details' : 'View requests')}
+                    </button>
+                  )}
 
-                </article>
+                  {ride.status !== 'COMPLETED' && ride.status !== 'CANCELLED' && isRideUpcoming(ride) && (
+                    <button className="soft-button danger-button" onClick={() => cancelRide(ride._id)}>
+                      Cancel Ride
+                    </button>
+                  )}
+
+                  {ride.status !== 'COMPLETED' && ride.status !== 'CANCELLED' && (
+                    <button className="soft-button" onClick={() => setReportState({ open: true, rideId: ride._id, reportedUserId: ride.creator?._id || '', reason: 'Ride issue', description: '' })}>
+                      Report issue
+                    </button>
+                  )}
+                </div>
+              </article>
 
               {selectedRideId === ride._id && (
                 <div className="ride-request-history">
                   <b>Requests for this ride</b>
-                  {incomingRequests.filter(
-                    (item) => String(item.ride?._id) === String(ride._id)
-                  ).length === 0 ? (
+                  {incomingRequests.filter((item) => String(item.ride?._id) === String(ride._id)).length === 0 ? (
                     <small>No requests yet.</small>
                   ) : (
-                    incomingRequests
-                      .filter((item) => String(item.ride?._id) === String(ride._id))
-                      .map((item) => (
-                        <div className="ride-request-row" key={item._id}>
-                          <span>
-                            <b>{item.user?.name || 'Student'}</b>
-                            <small>{item.user?.email || ''}</small>
-                          </span>
-                          <span className={`request-status ${item.status.toLowerCase()}`}>
-                            {item.status}
-                          </span>
-                          {item.status === 'PENDING' && (
-                            <div className="request-actions">
-                              <button className="primary-button" disabled={busyId === item._id} onClick={() => processRequest(ride._id, item._id, 'accept')}>
-                                {busyId === item._id ? 'Processing...' : 'Accept'}
-                              </button>
-                              <button className="soft-button" disabled={busyId === item._id} onClick={() => processRequest(ride._id, item._id, 'reject')}>
-                                Reject
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))
+                    incomingRequests.filter((item) => String(item.ride?._id) === String(ride._id)).map((item) => (
+                      <div className="ride-request-row" key={item._id}>
+                        <span>
+                          <b>{item.user?.name || 'Student'}</b>
+                          <small>{item.user?.email || ''}</small>
+                        </span>
+                        <span className={`request-status ${item.status.toLowerCase()}`}>
+                          {item.status}
+                        </span>
+                        {item.status === 'PENDING' && (
+                          <div className="request-actions">
+                            <button className="primary-button" disabled={busyId === item._id} onClick={() => processRequest(ride._id, item._id, 'accept')}>
+                              {busyId === item._id ? 'Processing...' : 'Accept'}
+                            </button>
+                            <button className="soft-button" disabled={busyId === item._id} onClick={() => processRequest(ride._id, item._id, 'reject')}>
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))
                   )}
                 </div>
-                )}
-              </React.Fragment>
-            )
-          )}
-
+              )}
+            </React.Fragment>
+          ))}
         </div>
-
       </section>
 
-
-      {/* =================================================
-          JOINED RIDES
-      ================================================= */}
-
       <section className="trip-section">
-
         <div className="section-heading">
-
           <div>
-            <p className="eyebrow">
-              JOINED RIDES
-            </p>
-
-            <h2>
-              Rides you joined
-            </h2>
+            <p className="eyebrow">JOINED RIDES</p>
+            <h2>Rides you joined</h2>
           </div>
-
         </div>
 
         <div className="trip-list">
+          {[...upcomingJoined, ...pastJoined].map((ride) => (
+            <article className="trip-item trip-ride-card" key={ride._id}>
+              <div className="ride-summary-copy">
+                <div className="route-inline summary-route"> {routeLabel(ride.source, ride.destination)} </div>
+                <small>{dateLabel(ride.date)} · {ride.departureTime}</small>
+                <small>Driver: {ride.creator?.name || 'Unknown'}</small>
+              </div>
 
-          {joined.map(
-            (ride) => (
-              <article
-                className="trip-item"
-                key={ride._id}
-              >
-
-                <div>
-                  <b>
-                    {ride.source} to{' '}
-                    {ride.destination}
-                  </b>
-
-                  <small>
-                    {dateLabel(
-                      ride.date
-                    )}
-                    {' · '}
-                    {ride.departureTime}
-                  </small>
-
-                  <small>
-                    Driver:{' '}
-                    {ride.creator?.name ||
-                      'Unknown'}
-                  </small>
-                </div>
-
-                <span className="status verified-status">
-                  ACCEPTED
-                </span>
-
-              </article>
-            )
-          )}
-
+              <div className="trip-actions">
+                <span className="status verified-status">{ride.status}</span>
+                {isRideUpcoming(ride) && (
+                  <button className="soft-button danger-button" onClick={() => leaveRide(ride._id)}>
+                    Leave Ride
+                  </button>
+                )}
+                {ride.status !== 'CANCELLED' && ride.status !== 'COMPLETED' && (
+                  <button className="soft-button" onClick={() => setReportState({ open: true, rideId: ride._id, reportedUserId: ride.creator?._id || '', reason: 'Ride issue', description: '' })}>
+                    Report issue
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
         </div>
-
       </section>
 
+      {!created.length && !joined.length && !pending.length && !rejected.length && !incomingRequests.length && (
+        <div className="empty-state">
+          <h3>No trips yet</h3>
+          <p>Offer or join a ride to start building your commute history.</p>
+        </div>
+      )}
 
-      {!created.length &&
-        !joined.length &&
-        !pending.length &&
-        !rejected.length &&
-        !incomingRequests.length && (
-          <div className="empty-state">
+      {reportState.open && (
+        <div className="modal-backdrop" onClick={() => setReportState((prev) => ({ ...prev, open: false }))}>
+          <div className="modal" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-head">
+              <h2>Report an issue</h2>
+              <button className="icon-button" onClick={() => setReportState((prev) => ({ ...prev, open: false }))} aria-label="Close report dialog">
+                <X size={18} />
+              </button>
+            </div>
 
-            <h3>
-              No trips yet
-            </h3>
+            <div className="ride-form report-form">
+              <label>
+                <small>Issue type</small>
+                <select value={reportState.reason} onChange={(event) => setReportState((prev) => ({ ...prev, reason: event.target.value }))}>
+                  <option value="Safety issue">Safety issue</option>
+                  <option value="Driver/passenger behavior">Driver/passenger behavior</option>
+                  <option value="Vehicle issue">Vehicle issue</option>
+                  <option value="Ride issue">Ride issue</option>
+                  <option value="Wrong information">Wrong information</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
 
-            <p>
-              Offer or join a ride to start
-              building your commute history.
-            </p>
+              <label>
+                <small>Description</small>
+                <textarea value={reportState.description} onChange={(event) => setReportState((prev) => ({ ...prev, description: event.target.value }))} placeholder="Describe the issue you want the admin to review." />
+              </label>
 
+              <button className="primary-button" onClick={submitReport}>Submit Report</button>
+            </div>
           </div>
-        )}
-
+        </div>
+      )}
     </section>
   );
 }
@@ -1924,7 +2058,9 @@ export function StudentWorkspace({
   rides,
   setRides,
   notifications,
-  setNotifications
+  setNotifications,
+  activeChatRideId,
+  onOpenChat
 }) {
   const token =
     localStorage.getItem(
@@ -1981,6 +2117,7 @@ export function StudentWorkspace({
           rides={rides}
           token={token}
           user={user}
+          activeRideId={activeChatRideId}
         />
       )}
 
@@ -1989,6 +2126,9 @@ export function StudentWorkspace({
           request={request}
           rides={rides}
           setRides={setRides}
+          setScreen={setScreen}
+          onOpenChat={onOpenChat}
+          user={user}
         />
       )}
 
@@ -2357,6 +2497,9 @@ export function StudentApp({
 
   const [notifications, setNotifications] =
     useState([]);
+
+  const [activeChatRideId, setActiveChatRideId] =
+    useState('');
 
   const [query, setQuery] =
     useState('');
@@ -3041,6 +3184,11 @@ export function StudentApp({
             setNotifications={
               setNotifications
             }
+            activeChatRideId={activeChatRideId}
+            onOpenChat={(ride) => {
+              setActiveChatRideId(ride?._id || '');
+              setScreen('messages');
+            }}
           />
         )}
 

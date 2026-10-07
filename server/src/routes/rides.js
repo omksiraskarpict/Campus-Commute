@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import Ride from '../models/Ride.js';
 import JoinRequest from '../models/JoinRequest.js';
 import Notification from '../models/Notification.js';
+import Report from '../models/Report.js';
 
 import { requireAuth } from '../middleware/auth.js';
 
@@ -121,7 +122,7 @@ router.get('/', requireAuth, async (req, res, next) => {
     const rides = await Ride.find(query)
       .populate(
         'creator',
-        'name rating department year profileImage'
+        'name rating department year profileImage verificationStatus'
       )
       .sort({
         date: 1,
@@ -168,7 +169,7 @@ router.get('/mine', requireAuth, async (req, res, next) => {
       .limit(50)
       .populate(
         'creator',
-        'name rating'
+        'name rating profileImage verificationStatus'
       )
       .lean();
 
@@ -187,7 +188,7 @@ router.get('/mine', requireAuth, async (req, res, next) => {
         path: 'ride',
         populate: {
           path: 'creator',
-          select: 'name rating'
+          select: 'name rating profileImage verificationStatus'
         }
       })
       .sort({
@@ -207,7 +208,7 @@ router.get('/mine', requireAuth, async (req, res, next) => {
         path: 'ride',
         populate: {
           path: 'creator',
-          select: 'name rating'
+          select: 'name rating profileImage verificationStatus'
         }
       })
       .sort({
@@ -230,7 +231,7 @@ router.get('/mine', requireAuth, async (req, res, next) => {
           })
             .populate(
               'user',
-              'name email rating department year profileImage'
+              'name email rating department year profileImage verificationStatus'
             )
             .populate(
               'ride',
@@ -262,7 +263,7 @@ router.get('/mine', requireAuth, async (req, res, next) => {
             path: 'ride',
             populate: {
               path: 'creator',
-              select: 'name rating'
+              select: 'name rating profileImage verificationStatus'
             }
           })
           .sort({ updatedAt: -1 })
@@ -324,7 +325,7 @@ router.post('/', requireAuth, async (req, res, next) => {
     res.status(201).json({
       ride: await ride.populate(
         'creator',
-        'name rating'
+        'name rating profileImage verificationStatus'
       )
     });
   } catch (error) {
@@ -502,6 +503,99 @@ router.post(
       res.json({
         ride
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/cancel',
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ message: 'Invalid ride ID.' });
+      }
+
+      const ride = await Ride.findOne({
+        _id: req.params.id,
+        creator: req.user._id
+      });
+
+      if (!ride) {
+        return res.status(404).json({ message: 'Ride not found.' });
+      }
+
+      if (['COMPLETED', 'CANCELLED'].includes(ride.status)) {
+        return res.status(409).json({ message: 'This ride cannot be cancelled.' });
+      }
+
+      const updatedRide = await Ride.findByIdAndUpdate(
+        req.params.id,
+        {
+          $set: {
+            status: 'CANCELLED'
+          }
+        },
+        { new: true }
+      );
+
+      await JoinRequest.updateMany(
+        { ride: req.params.id, status: 'ACCEPTED' },
+        { $set: { status: 'LEFT', joinedAt: null } }
+      );
+
+      req.app.get('io')?.to(`ride:${req.params.id}`).emit('rideUpdated', { ride: updatedRide });
+
+      res.json({ ride: updatedRide });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/report',
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        return res.status(400).json({ message: 'Invalid ride ID.' });
+      }
+
+      const ride = await Ride.findById(req.params.id).lean();
+      if (!ride) {
+        return res.status(404).json({ message: 'Ride not found.' });
+      }
+
+      const reason = String(req.body?.reason || '').trim();
+      const description = String(req.body?.description || '').trim();
+      if (!reason || !description) {
+        return res.status(400).json({ message: 'Reason and description are required.' });
+      }
+
+      const isParticipant = await JoinRequest.exists({
+        ride: req.params.id,
+        user: req.user._id,
+        status: 'ACCEPTED'
+      });
+
+      const isCreator = String(ride.creator) === String(req.user._id);
+      if (!isCreator && !isParticipant) {
+        return res.status(403).json({ message: 'You are not a participant in this ride.' });
+      }
+
+      const report = await Report.create({
+        reporter: req.user._id,
+        reportedUser: req.body?.reportedUser || ride.creator,
+        ride: req.params.id,
+        reason,
+        description,
+        status: 'OPEN'
+      });
+
+      res.status(201).json({ report, message: 'Report submitted successfully.' });
     } catch (error) {
       next(error);
     }
@@ -745,6 +839,73 @@ router.post(
       res.json({
         request
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.post(
+  '/:id/requests/:requestId/remove',
+  requireAuth,
+  async (req, res, next) => {
+    try {
+      if (
+        !mongoose.Types.ObjectId.isValid(req.params.id) ||
+        !mongoose.Types.ObjectId.isValid(req.params.requestId)
+      ) {
+        return res.status(400).json({ message: 'Invalid ride or request ID.' });
+      }
+
+      const ride = await Ride.findOne({
+        _id: req.params.id,
+        creator: req.user._id
+      });
+
+      if (!ride) {
+        return res.status(404).json({ message: 'Ride not found.' });
+      }
+
+      const request = await JoinRequest.findOne({
+        _id: req.params.requestId,
+        ride: req.params.id,
+        status: 'ACCEPTED'
+      });
+
+      if (!request) {
+        return res.status(404).json({ message: 'Accepted request not found.' });
+      }
+
+      const updatedRequest = await JoinRequest.findOneAndUpdate(
+        {
+          _id: req.params.requestId,
+          ride: req.params.id,
+          status: 'ACCEPTED'
+        },
+        { $set: { status: 'LEFT', joinedAt: null } },
+        { new: true }
+      );
+
+      const updatedRide = await Ride.findOneAndUpdate(
+        {
+          _id: req.params.id,
+          currentPassengers: { $gt: 0 }
+        },
+        {
+          $inc: { currentPassengers: -1, availableSeats: 1 },
+          $set: { status: 'ACTIVE' }
+        },
+        { new: true }
+      );
+
+      req.app.get('io')?.to(`ride:${req.params.id}`).emit('rideUpdated', { ride: updatedRide });
+      req.app.get('io')?.to(`user:${request.user}`).emit('notification', {
+        type: 'REQUEST_REMOVED',
+        relatedRide: req.params.id,
+        relatedRequest: request._id
+      });
+
+      res.json({ ride: updatedRide, request: updatedRequest });
     } catch (error) {
       next(error);
     }

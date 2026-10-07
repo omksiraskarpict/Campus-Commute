@@ -1489,6 +1489,410 @@ a {
   background: #ffffff;
 }
 
+.subpage.trips-page {
+  position: relative;
+  width: min(980px, 100%);
+  padding: 18px 22px 28px;
+  border: 1px solid rgba(23, 32, 56, 0.08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 26px 70px rgba(20, 33, 57, 0.08);
+}
+
+.main-content:has(.trips-page) {
+  background:
+    linear-gradient(90deg, rgba(244, 247, 250, 0.96) 0%, rgba(244, 247, 250, 0.86) 28%, rgba(244, 247, 250, 0.34) 50%, rgba(244, 247, 250, 0.1) 100%),
+    url('/campus-commute-background.jpg') center right / cover no-repeat fixed;
+}
+
+.trips-page .welcome-row {
+  width: min(760px, 100%);
+  padding-bottom: 18px;
+}
+
+.trips-page .welcome-row h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(33px, 3vw, 52px);
+  letter-spacing: -1.8px;
+  line-height: 0.96;
+  color: #18253f;
+}
+
+.trips-page .welcome-row h1 em {
+  color: #18253f;
+  font-style: normal;
+}
+
+.trips-page .eyebrow {
+  color: #7a5a2d;
+}
+
+.trips-page .muted {
+  color: #546173;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.trip-section {
+  position: relative;
+  z-index: 1;
+}
+
+.active-chat-list {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding: 4px 2px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 156, 0.52) transparent;
+}
+
+.active-chat-list::-webkit-scrollbar {
+  height: 8px;
+}
+
+.active-chat-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(92, 110, 148, 0.48);
+}
+
+.active-chat-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex: 0 0 360px;
+  min-width: 0;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #0d1c33 0%, #14284a 55%, #173a63 100%);
+  box-shadow: 0 18px 35px rgba(10, 22, 42, 0.22);
+}
+
+.active-chat-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.active-chat-avatar {
+  width: 46px;
+  height: 46px;
+  font-size: 11px;
+  background: linear-gradient(135deg, #dfe9ff, #e7f3ff);
+  color: #1d3b7a;
+}
+
+.active-chat-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.active-chat-name-row,
+.requester-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.active-chat-name-row b,
+.requester-name-row b {
+  color: #ffffff;
+  font-size: 12px;
+}
+
+.active-chat-copy small,
+.active-chat-rating {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 10px;
+}
+
+.verified-inline-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 2px;
+  border-radius: 50%;
+  background: #34d399;
+  color: #0a2d2e;
+  box-shadow: 0 8px 18px rgba(52, 211, 153, 0.35);
+}
+
+.active-chat-meta {
+  display: grid;
+  gap: 7px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.active-chat-vehicle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #edf7ff;
+  font-size: 11px;
+}
+
+.active-chat-plate {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 10px;
+}
+
+.active-chat-button {
+  min-width: 118px;
+  height: 38px;
+  padding-inline: 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #6d67ff 0%, #7d5af7 100%);
+  color: #ffffff;
+  box-shadow: 0 12px 22px rgba(109, 103, 255, 0.28);
+}
+
+.active-chats-section .active-chat-list {
+  position: relative;
+  padding-right: 26px;
+}
+
+.active-chats-section .active-chat-list::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 100%;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(250, 250, 255, 0) 0%, rgba(250, 250, 255, 0.82) 100%);
+  pointer-events: none;
+}
+
+.route-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #1a2c47;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.route-inline span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: inherit;
+}
+
+.route-inline svg {
+  flex-shrink: 0;
+}
+
+.summary-route {
+  margin-bottom: 7px;
+}
+
+.ride-summary-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.trip-ride-card {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.trip-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.danger-button {
+  border-color: rgba(220, 87, 87, 0.16);
+  background: #fff1f1;
+  color: #c64f4f;
+}
+
+.rejected-status {
+  background: #ffe7e7;
+  color: #c64f4f;
+}
+
+.report-form {
+  display: grid;
+  gap: 14px;
+}
+
+.report-form select,
+.report-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--deep);
+  font: 500 12px Manrope;
+}
+
+.report-form textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.trips-page .avatar-photo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.request-card {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.15fr) minmax(260px, 1.9fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 22px rgba(26, 41, 72, 0.04);
+}
+
+.request-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.request-user-info {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.request-user-info b {
+  color: var(--deep);
+  font-size: 12px;
+}
+
+.request-user-info small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.request-main-metrics {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.request-route-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--deep);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.request-route-row svg {
+  color: var(--violet);
+}
+
+.request-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+.request-metric-grid > div {
+  display: grid;
+  gap: 4px;
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.request-metric-grid strong {
+  color: var(--deep);
+  font-size: 12px;
+}
+
+.request-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.request-status {
+  min-width: 100px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.request-status.accepted {
+  background: #eafaf0;
+  color: #1d8f52;
+}
+
+.request-status.pending {
+  background: #fff1d3;
+  color: #af7400;
+}
+
+.request-status.rejected {
+  background: #ffe5e8;
+  color: #c23a4e;
+}
+
+@media (max-width: 760px) {
+  .subpage.trips-page {
+    padding: 16px 14px 20px;
+    border-radius: 22px;
+  }
+
+  .active-chat-card {
+    flex-basis: 300px;
+    padding: 15px 16px;
+  }
+
+  .request-card {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .request-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .request-actions {
+    justify-content: flex-start;
+  }
+}
+
 .trip-actions {
   display: flex;
   align-items: center;
